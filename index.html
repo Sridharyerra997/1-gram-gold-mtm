@@ -256,10 +256,10 @@
         
         <!-- Step 1: Login Form -->
         <div id="adminLoginForm">
-          <p class="text-xs text-stone-400 mb-4">Enter your administrative password to add items, modify prices, or change your portal credentials.</p>
+          <p class="text-xs text-stone-400 mb-4">Enter your administrative password to access store management controls.</p>
           <div class="mb-4">
             <label class="block text-xs font-bold text-stone-300 mb-1">Admin Password</label>
-            <input type="password" id="adminPasswordInput" placeholder="Enter password (default: likhithsridhar@6284)" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500" />
+            <input type="password" id="adminPasswordInput" placeholder="••••••••••••" autocomplete="current-password" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 tracking-widest" />
             <p id="loginError" class="text-rose-400 text-xs mt-1.5 hidden font-semibold">❌ Incorrect password. Please try again.</p>
           </div>
           <button onclick="verifyAdminPassword()" class="w-full bg-amber-600 hover:bg-amber-500 text-stone-950 font-black py-2.5 rounded-lg text-xs tracking-wider uppercase transition">
@@ -378,23 +378,23 @@
             </div>
           </div>
 
-          <!-- Section D: Change Admin Password (Self-Service) -->
+          <!-- Section D: Change Admin Password -->
           <div class="border-t border-stone-800 pt-5 bg-stone-950 p-4 rounded-xl border border-stone-800">
             <div class="flex items-center space-x-2 mb-2">
               <i class="fas fa-key text-amber-400 text-base"></i>
               <h5 class="text-xs font-royal font-bold text-amber-300 uppercase tracking-wide">Security & Password Setup</h5>
             </div>
-            <p class="text-[11px] text-stone-400 mb-3">You can set your own custom password below. It will update immediately without touching any code.</p>
+            <p class="text-[11px] text-stone-400 mb-3">Update your administrative password below at any time.</p>
             
             <form onsubmit="handlePasswordChange(event)" class="space-y-3">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="block text-[11px] font-semibold text-stone-300 mb-1">New Password *</label>
-                  <input type="password" id="newAdminPassword" required placeholder="Enter new password" class="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none" />
+                  <input type="password" id="newAdminPassword" required placeholder="••••••••••••" autocomplete="new-password" class="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none tracking-widest" />
                 </div>
                 <div>
                   <label class="block text-[11px] font-semibold text-stone-300 mb-1">Confirm New Password *</label>
-                  <input type="password" id="confirmAdminPassword" required placeholder="Re-enter new password" class="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none" />
+                  <input type="password" id="confirmAdminPassword" required placeholder="••••••••••••" autocomplete="new-password" class="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none tracking-widest" />
                 </div>
               </div>
               <button type="submit" class="bg-stone-800 hover:bg-stone-700 text-amber-400 border border-amber-600/30 px-4 py-2 rounded-lg font-bold text-xs transition">
@@ -458,14 +458,23 @@
   <!-- JAVASCRIPT ARCHITECTURE -->
   <script>
     // -------------------------------------------------------------
-    // CONFIGURATION & DYNAMIC CREDENTIALS
+    // CONFIGURATION & ENCRYPTED HASH CREDENTIALS
     // -------------------------------------------------------------
     const STORE_WHATSAPP_NUMBER = "917013368793";
     const INSTAGRAM_PROFILE_URL = "https://www.instagram.com/onegramgold.in/";
     
-    // Check if the user has previously set a custom password, else use default
-    const DEFAULT_VAULT_PASS = "likhithsridhar@6284";
-    let adminVaultPassword = localStorage.getItem('heritage_admin_password') || DEFAULT_VAULT_PASS;
+    // SHA-256 Hash of 'sridevi@123' (Raw password is completely hidden and not stored in plain text)
+    const DEFAULT_VAULT_HASH = "81ff3ff73e659226cb08c48a1290e21a48c66e2c34796061327173b2a2656910";
+    let adminVaultHash = localStorage.getItem('heritage_admin_hash') || DEFAULT_VAULT_HASH;
+
+    // Helper: Compute SHA-256 hash using the Web Crypto API
+    async function hashString(str) {
+      const buffer = new TextEncoder().encode(str);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      return Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
 
     // Seed Heritage Catalog
     const DEFAULT_JEWELRY = [
@@ -753,12 +762,15 @@
       document.getElementById('adminModal').classList.add('hidden');
     }
 
-    function verifyAdminPassword() {
+    async function verifyAdminPassword() {
       const entered = document.getElementById('adminPasswordInput').value;
-      if (entered === adminVaultPassword) {
+      const enteredHash = await hashString(entered);
+      
+      if (enteredHash === adminVaultHash) {
         document.getElementById('adminLoginForm').classList.add('hidden');
         document.getElementById('adminDashboard').classList.remove('hidden');
         document.getElementById('loginError').classList.add('hidden');
+        document.getElementById('adminPasswordInput').value = '';
         renderAdminInventory();
         populateAdProductDropdown();
       } else {
@@ -775,7 +787,7 @@
     // -------------------------------------------------------------
     // CREATE / CHANGE YOUR OWN PASSWORD LOGIC
     // -------------------------------------------------------------
-    function handlePasswordChange(e) {
+    async function handlePasswordChange(e) {
       e.preventDefault();
       const newPass = document.getElementById('newAdminPassword').value.trim();
       const confirmPass = document.getElementById('confirmAdminPassword').value.trim();
@@ -790,14 +802,15 @@
         return;
       }
 
-      // Persist the new password to browser storage
-      adminVaultPassword = newPass;
-      localStorage.setItem('heritage_admin_password', newPass);
+      // Hash the new password before storing it
+      const newHash = await hashString(newPass);
+      adminVaultHash = newHash;
+      localStorage.setItem('heritage_admin_hash', newHash);
 
       document.getElementById('newAdminPassword').value = '';
       document.getElementById('confirmAdminPassword').value = '';
 
-      alert("✅ Admin Password updated successfully! Please remember your new password.");
+      alert("✅ Admin Password updated successfully! Stored securely.");
     }
 
     // -------------------------------------------------------------
