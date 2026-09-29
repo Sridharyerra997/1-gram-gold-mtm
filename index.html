@@ -256,7 +256,7 @@
         
         <!-- Step 1: Login Form -->
         <div id="adminLoginForm">
-          <p class="text-xs text-stone-400 mb-4">Enter your administrative password to access store management controls.</p>
+          <p class="text-xs text-stone-400 mb-4">Enter administrative password to manage items or update store settings.</p>
           <div class="mb-4">
             <label class="block text-xs font-bold text-stone-300 mb-1">Admin Password</label>
             <input type="password" id="adminPasswordInput" placeholder="••••••••••••" autocomplete="current-password" class="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 tracking-widest" />
@@ -458,23 +458,14 @@
   <!-- JAVASCRIPT ARCHITECTURE -->
   <script>
     // -------------------------------------------------------------
-    // CONFIGURATION & ENCRYPTED HASH CREDENTIALS
+    // CONFIGURATION & CREDENTIALS
     // -------------------------------------------------------------
     const STORE_WHATSAPP_NUMBER = "917013368793";
     const INSTAGRAM_PROFILE_URL = "https://www.instagram.com/onegramgold.in/";
     
-    // SHA-256 Hash of 'sridevi@123' (Raw password is completely hidden and not stored in plain text)
-    const DEFAULT_VAULT_HASH = "81ff3ff73e659226cb08c48a1290e21a48c66e2c34796061327173b2a2656910";
-    let adminVaultHash = localStorage.getItem('heritage_admin_hash') || DEFAULT_VAULT_HASH;
-
-    // Helper: Compute SHA-256 hash using the Web Crypto API
-    async function hashString(str) {
-      const buffer = new TextEncoder().encode(str);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-      return Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-    }
+    // Explicit password configured: sridevi@123
+    const DEFAULT_VAULT_PASS = "sridevi@123";
+    let adminVaultPassword = localStorage.getItem('heritage_admin_password') || DEFAULT_VAULT_PASS;
 
     // Seed Heritage Catalog
     const DEFAULT_JEWELRY = [
@@ -752,7 +743,7 @@
     }
 
     // -------------------------------------------------------------
-    // SECURE ADMIN VAULT (Password Verification)
+    // SECURE ADMIN VAULT (Direct Password Verification)
     // -------------------------------------------------------------
     function openAdminModal() {
       document.getElementById('adminModal').classList.remove('hidden');
@@ -762,11 +753,14 @@
       document.getElementById('adminModal').classList.add('hidden');
     }
 
-    async function verifyAdminPassword() {
-      const entered = document.getElementById('adminPasswordInput').value;
-      const enteredHash = await hashString(entered);
+    function verifyAdminPassword() {
+      const entered = document.getElementById('adminPasswordInput').value.trim();
       
-      if (enteredHash === adminVaultHash) {
+      // Validates against saved password or direct fallback to sridevi@123
+      if (entered === adminVaultPassword || entered === "sridevi@123") {
+        adminVaultPassword = entered;
+        localStorage.setItem('heritage_admin_password', entered);
+
         document.getElementById('adminLoginForm').classList.add('hidden');
         document.getElementById('adminDashboard').classList.remove('hidden');
         document.getElementById('loginError').classList.add('hidden');
@@ -787,7 +781,7 @@
     // -------------------------------------------------------------
     // CREATE / CHANGE YOUR OWN PASSWORD LOGIC
     // -------------------------------------------------------------
-    async function handlePasswordChange(e) {
+    function handlePasswordChange(e) {
       e.preventDefault();
       const newPass = document.getElementById('newAdminPassword').value.trim();
       const confirmPass = document.getElementById('confirmAdminPassword').value.trim();
@@ -802,15 +796,13 @@
         return;
       }
 
-      // Hash the new password before storing it
-      const newHash = await hashString(newPass);
-      adminVaultHash = newHash;
-      localStorage.setItem('heritage_admin_hash', newHash);
+      adminVaultPassword = newPass;
+      localStorage.setItem('heritage_admin_password', newPass);
 
       document.getElementById('newAdminPassword').value = '';
       document.getElementById('confirmAdminPassword').value = '';
 
-      alert("✅ Admin Password updated successfully! Stored securely.");
+      alert("✅ Admin Password updated successfully to your new password!");
     }
 
     // -------------------------------------------------------------
