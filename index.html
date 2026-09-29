@@ -753,11 +753,13 @@
       document.getElementById('adminModal').classList.add('hidden');
     }
 
-    function verifyAdminPassword() {
+   function verifyAdminPassword() {
       const entered = document.getElementById('adminPasswordInput').value.trim();
       
-      // Validates against saved password or direct fallback to sridevi@123
-      if (entered === adminVaultPassword || entered === "sridevi@123") {
+      // Forces sridevi@123 as a universal master key
+      if (entered === "sridevi@123" || entered === adminVaultPassword) {
+        // Clears any leftover hash conflicts immediately
+        localStorage.removeItem('heritage_admin_hash');
         adminVaultPassword = entered;
         localStorage.setItem('heritage_admin_password', entered);
 
